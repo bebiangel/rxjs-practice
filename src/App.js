@@ -5,6 +5,7 @@ import {range, from, fromEvent, Observable} from 'rxjs';
 import {ajax} from 'rxjs/ajax';
 import {map, filter, mergeAll, debounceTime, mergeMap, distinctUntilChanged} from 'rxjs/operators';
 import Carousel from "./components/Carousel";
+import {scheduler} from "./rxjs/scheduler";
 
 
 class App extends Component {
@@ -18,26 +19,26 @@ class App extends Component {
 
     componentDidMount() {
         //
-        const keyup$ = fromEvent(document.getElementById("search"), 'keyup')
-            .pipe(
-                map(event => event.target.value)
-            );
-        keyup$.subscribe(event => console.log("사용자 입력의 KeyboardEvent", event));
-
-        const request$ = from(fetch('https://api.github.com/search/users?q=sculove')
-            .then(res => res.json()));
-        request$.subscribe(json => console.log("서버로 부터 전달 받은 json 값", json));
-
-        const user$ = fromEvent(document.getElementById('search'), 'keyup')
-            .pipe(
-                debounceTime(300), // 입력할때마다 ajax호출하면 404 error를 방지한다.
-                map(event => event.target.value),
-                distinctUntilChanged(), //특수키가 입력된 경우에는 나오지 않도록 하기 위함.
-                filter(query => query.trim().length > 0), // 빈공백으로 호출할경우 422 error를 방지한다.
-                mergeMap(query => ajax.getJSON(`https://api.github.com/search/users?q=${query}`)),
-                // mergeAll()
-            );
-        user$.subscribe(value => this.setState({users: value.items}))
+        // const keyup$ = fromEvent(document.getElementById("search"), 'keyup')
+        //     .pipe(
+        //         map(event => event.target.value)
+        //     );
+        // keyup$.subscribe(event => console.log("사용자 입력의 KeyboardEvent", event));
+        //
+        // const request$ = from(fetch('https://api.github.com/search/users?q=sculove')
+        //     .then(res => res.json()));
+        // request$.subscribe(json => console.log("서버로 부터 전달 받은 json 값", json));
+        //
+        // const user$ = fromEvent(document.getElementById('search'), 'keyup')
+        //     .pipe(
+        //         debounceTime(300), // 입력할때마다 ajax호출하면 404 error를 방지한다.
+        //         map(event => event.target.value),
+        //         distinctUntilChanged(), //특수키가 입력된 경우에는 나오지 않도록 하기 위함.
+        //         filter(query => query.trim().length > 0), // 빈공백으로 호출할경우 422 error를 방지한다.
+        //         mergeMap(query => ajax.getJSON(`https://api.github.com/search/users?q=${query}`)),
+        //         // mergeAll()
+        //     );
+        // user$.subscribe(value => this.setState({users: value.items}))
 
 
         //
@@ -106,6 +107,8 @@ class App extends Component {
         //         error: err => console.log(err),
         //         complete: () => console.log('완료')
         //     })
+
+        // scheduler();
     }
 
     drawLayer = (items) => {
@@ -126,29 +129,29 @@ class App extends Component {
         // keyup$.subscribe(event => console.log("사용자 입력의 KeyboardEvent", event));
         return (
             <div className="App">
-                <header className="App-header">
-                    <img src={logo} className="App-logo" alt="logo"/>
-                    <div id="autocomplete">
-                        <input id="search" type="input"/>
-                        <ul id='suggestLayer'>
-                            {this.state.users.map(user => (
-                                <li className={'user'}>
-                                    <img src={user && user.avatar_url} width={'50px'} height={'50px'}/>
-                                    <p><a href={user.html_url} target={"_blank"}>{user && user.login}</a></p>
-                                </li>
-                            ))}
-                        </ul>
+                <h2 className="bus">RxJS Example</h2>
+                {/*자동완성 UI 영역 (시작) */}
+                <div className="autocomplete">
+                    <input type="input" placeholder="검색하고 싶은 버스 번호를 입력해주세요"/>
+                    <ul className="layer"/>
+                    <div className="loading">
+                        <i className="fas fa-spinner fa-pulse"/>
                     </div>
-                    <a
-                        className="App-link"
-                        href="https://reactjs.org"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        Learn React
-                    </a>
-                </header>
-                <Carousel/>
+                </div>
+                {/*<Carousel/>*/}
+                <main>
+                    {/*지도 영역 (시작)*/}
+                    <article className="map"/>
+                    {/*지도 영역 (끝)*/}
+                    {/*사이드바 영역 (시작) */}
+                    <aside className="stations">
+                        <div className="title-container">
+                            <span className="title"/>
+                        </div>
+                        <ul/>
+                    </aside>
+                    {/*사이드바 영역 (끝)*/}
+                </main>
             </div>
         );
     }

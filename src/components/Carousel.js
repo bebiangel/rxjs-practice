@@ -2,12 +2,14 @@ import React, {Component} from 'react';
 import './_Carousel.css';
 
 import {fromEvent, merge} from 'rxjs';
-import {map, startWith, switchMap, takeUntil, tap, share, first, withLatestFrom} from 'rxjs/operators';
+import {first, map, scan, share, startWith, switchMap, takeUntil, withLatestFrom} from 'rxjs/operators';
 
 class Carousel extends Component {
     //
     componentDidMount() {
         //
+        const THRESHOLD = 30;
+        const DEFAULT_DURATION = 300;
         const $view = document.getElementById("carousel");
         const $container = $view.querySelector(".container");
         const PANEL_COUNT = $container.querySelectorAll(".panel").length;
@@ -18,6 +20,9 @@ class Carousel extends Component {
             end: SUPPORT_TOUCH ? "touchend" : "mouseup"
         };
 
+        function translateX(posX) {
+            $container.style.transform = `translate3d(${posX}px, 0, 0)`;
+        }
 
         function toPos(obs$) {
             return obs$.pipe(
@@ -32,8 +37,6 @@ class Carousel extends Component {
             startWith(0),
             map(event => $view.clientWidth)
         )
-
-        // size$.subscribe(width => console.log("view의 넓이", width));
         const drag$ = start$.pipe(
             switchMap(start => {
                 return move$.pipe(
@@ -41,10 +44,9 @@ class Carousel extends Component {
                     takeUntil(end$)
                 );
             }),
-            // tap(v => console.log("drag$", v)),
-            share()
+            share(),
+            map(distance => ({distance}))
         )
-
         // drag$.subscribe(distance => console.log("start$와 move$의 차이값", distance));
         const drop$ = drag$.pipe(
             // tap(v => console.log("drop$", v))
@@ -54,14 +56,71 @@ class Carousel extends Component {
                     first()
                 )
             }),
-            withLatestFrom(size$)
+            withLatestFrom(size$, (drag, size) => {
+                return {...drag, size};
+            })
         );
-        // drop$.subscribe(array => console.log("drop", array));
+
+
         const carousel$ = merge(drag$, drop$)
-        carousel$.subscribe(v => console.log("캐로셀 데이터", v));
+            .pipe(
+                scan((store, {distance, size}) => {
+                    const updateStore = {
+                        from: -(store.index * store.size) + distance
+                    };
+
+                    if (size === undefined) { // drag 시점
+                        updateStore.to = updateStore.from;
+                    } else {  // drop 시점
+                        let tobeIndex = store.index;
+                        if (Math.abs(distance) >= THRESHOLD) {
+                            tobeIndex = distance < 0 ?
+                                Math.min(tobeIndex + 1, PANEL_COUNT - 1) :
+                                Math.max(tobeIndex - 1, 0);
+                        }
+                        updateStore.index = tobeIndex;
+                        updateStore.to = -(tobeIndex * size);
+                        updateStore.size = size;
+                    }
+                    return {...store, ...updateStore};
+                }, {
+                    from: 0,
+                    to: 0,
+                    index: 0,
+                    size: 0,
+                })
+            )
+        carousel$.subscribe(store => {
+            console.log("캐로셀 데이터", store);
+            translateX(store.to);
+        });
     }
 
     render() {
+        //
+        // of(10, 10, 20, 0, 50).pipe(
+        //     reduce((acc, value, index) => {
+        //         acc.sum += value;
+        //         acc.ave = acc.sum / (index + 1);
+        //         return acc;
+        //     }, {
+        //         sum: 0,
+        //         ave: 0
+        //     })
+        // ).subscribe(v => console.log("reduce", v));
+        // console.log("====================");
+        //
+        // of(10, 10, 20, 0, 50).pipe(
+        //     scan((acc, value, index) => {
+        //         acc.sum += value;
+        //         acc.ave = acc.sum / (index + 1);
+        //         return acc;
+        //     }, {
+        //         sum: 0,
+        //         ave: 0
+        //     })
+        // ).subscribe(v => console.log("scan", v));
+
         return (
             <div id="carousel" className="view">
                 <ul className="container">
